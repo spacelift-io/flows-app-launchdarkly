@@ -1,0 +1,22 @@
+{
+  "type": "module",
+  "scripts": {
+    "setup": "./setup.sh",
+    "bundle": "npx flowctl version bundle -e main.ts",
+    "gen": "tsx ./scripts/generateActions.ts && npm run format",
+    "format": "prettier --write .",
+    "typecheck": "npx tsc --noEmit"
+  },
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^14.0.2",
+    "@slflows/sdk": "^0.5.1",
+    "@types/node": "^24.0.7",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "@useflows/flowctl": "^0.1.1",
+    "tsx": "^4.20.3"
+  }
+}

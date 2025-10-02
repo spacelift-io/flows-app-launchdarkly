@@ -1,0 +1,340 @@
+import {
+  AppBlock,
+  events,
+  EventInput,
+  AppBlockConfigField,
+} from "@slflows/sdk/v1";
+import { makeLaunchDarklyApiRequest } from "../../utils/apiHelpers.ts";
+
+// Input schema for Get Code Refs Repositories
+const inputSchema: Record<string, AppBlockConfigField> = {
+  flagKey: {
+    name: "Flag Key",
+    description:
+      "If set to any value, the endpoint returns repositories with associated branch data, as well as code references for the default git branch",
+    type: "string",
+    required: false,
+  },
+  projKey: {
+    name: "Proj Key",
+    description:
+      "A LaunchDarkly project key. If provided, this filters code reference results to the specified project.",
+    type: "string",
+    required: false,
+  },
+  withBranches: {
+    name: "With Branches",
+    description:
+      "If set to any value, the endpoint returns repositories with associated branch data",
+    type: "string",
+    required: false,
+  },
+  withReferencesForDefaultBranch: {
+    name: "With References For Default Branch",
+    description:
+      "If set to any value, the endpoint returns repositories with associated branch data, as well as code references for the default git branch",
+    type: "string",
+    required: false,
+  },
+};
+
+// Output schema for Get Code Refs Repositories
+const outputSchema = {
+  type: "object",
+  properties: {
+    _links: {
+      type: "object",
+      additionalProperties: true,
+    },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "The repository name",
+          },
+          sourceLink: {
+            type: "string",
+            description: "A URL to access the repository",
+          },
+          commitUrlTemplate: {
+            type: "string",
+            description:
+              "A template for constructing a valid URL to view the commit",
+          },
+          hunkUrlTemplate: {
+            type: "string",
+            description:
+              "A template for constructing a valid URL to view the hunk",
+          },
+          type: {
+            type: "string",
+            enum: ["bitbucket", "custom", "github", "gitlab"],
+            description: "The type of repository",
+          },
+          defaultBranch: {
+            type: "string",
+            description: "The repository's default branch",
+          },
+          enabled: {
+            type: "boolean",
+            description:
+              "Whether or not a repository is enabled for code reference scanning",
+          },
+          version: {
+            type: "integer",
+            description: "The version of the repository's saved information",
+          },
+          branches: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "The branch name",
+                },
+                head: {
+                  type: "string",
+                  description:
+                    "An ID representing the branch HEAD. For example, a commit SHA.",
+                },
+                updateSequenceId: {
+                  type: "integer",
+                  description:
+                    "An optional ID used to prevent older data from overwriting newer data",
+                },
+                syncTime: {
+                  type: "integer",
+                  description:
+                    "A timestamp indicating when the branch was last synced",
+                },
+                references: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      path: {
+                        type: "string",
+                        description: "File path of the reference",
+                      },
+                      hint: {
+                        type: "string",
+                        description: "Programming language used in the file",
+                      },
+                      hunks: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            startingLineNumber: {
+                              type: "integer",
+                              description:
+                                "Line number of beginning of code reference hunk",
+                            },
+                            lines: {
+                              type: "string",
+                              description:
+                                "Contextual lines of code that include the referenced feature flag",
+                            },
+                            projKey: {
+                              type: "string",
+                              description: "The project key",
+                            },
+                            flagKey: {
+                              type: "string",
+                              description: "The feature flag key",
+                            },
+                            aliases: {
+                              type: "array",
+                              items: {
+                                type: "string",
+                              },
+                              description: "An array of flag key aliases",
+                            },
+                          },
+                          required: ["startingLineNumber"],
+                        },
+                      },
+                    },
+                    required: ["path", "hunks"],
+                  },
+                  description:
+                    "An array of flag references found on the branch",
+                },
+                _links: {
+                  type: "object",
+                  description:
+                    "The location and content type of related resources",
+                  additionalProperties: true,
+                },
+              },
+              required: ["name", "head", "syncTime", "_links"],
+            },
+            description:
+              "An array of the repository's branches that have been scanned for code references",
+          },
+          _links: {
+            type: "object",
+            additionalProperties: true,
+          },
+          _access: {
+            type: "object",
+            properties: {
+              denied: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    action: {
+                      type: "string",
+                    },
+                    reason: {
+                      type: "object",
+                      properties: {
+                        resources: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description: "Resource specifier strings",
+                        },
+                        notResources: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description:
+                            "Targeted resources are the resources NOT in this list. The <code>resources</code> and <code>notActions</code> fields must be empty to use this field.",
+                        },
+                        actions: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description: "Actions to perform on a resource",
+                        },
+                        notActions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                          },
+                          description:
+                            "Targeted actions are the actions NOT in this list. The <code>actions</code> and <code>notResources</code> fields must be empty to use this field.",
+                        },
+                        effect: {
+                          type: "string",
+                          enum: ["allow", "deny"],
+                          description:
+                            "Whether this statement should allow or deny actions on the resources.",
+                        },
+                        role_name: {
+                          type: "string",
+                        },
+                      },
+                      required: ["effect"],
+                    },
+                  },
+                  required: ["action", "reason"],
+                },
+              },
+              allowed: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    reason: {
+                      type: "object",
+                      properties: {
+                        resources: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description: "Resource specifier strings",
+                        },
+                        notResources: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                          },
+                          description:
+                            "Targeted resources are the resources NOT in this list. The <code>resources</code> and <code>notActions</code> fields must be empty to use this field.",
+                        },
+                        actions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                          },
+                          description: "Actions to perform on a resource",
+                        },
+                        notActions: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                          },
+                          description:
+                            "Targeted actions are the actions NOT in this list. The <code>actions</code> and <code>notResources</code> fields must be empty to use this field.",
+                        },
+                        effect: {
+                          type: "string",
+                          enum: ["allow", "deny"],
+                          description:
+                            "Whether this statement should allow or deny actions on the resources.",
+                        },
+                        role_name: {
+                          type: "string",
+                        },
+                      },
+                      required: ["effect"],
+                    },
+                  },
+                  required: ["reason"],
+                },
+              },
+            },
+            required: ["denied", "allowed"],
+          },
+        },
+        required: [
+          "name",
+          "type",
+          "defaultBranch",
+          "enabled",
+          "version",
+          "_links",
+        ],
+      },
+      description: "An array of repositories",
+    },
+  },
+  required: ["_links", "items"],
+};
+
+export default {
+  name: "Get Code Refs Repositories",
+  description: "Retrieves get code refs repositories in LaunchDarkly",
+  category: "Code references",
+
+  inputs: {
+    default: {
+      config: inputSchema,
+      onEvent: async (input: EventInput) => {
+        const endpoint = `/api/v2/code-refs/repositories`;
+
+        const apiKey = input.app.config.apiKey as string;
+        const baseUrl = input.app.config.baseUrl as string;
+
+        await events.emit(
+          await makeLaunchDarklyApiRequest(apiKey, baseUrl, endpoint, {
+            method: "GET",
+          }),
+        );
+      },
+    },
+  },
+
+  outputs: { default: { default: true, type: outputSchema } },
+} as AppBlock;
