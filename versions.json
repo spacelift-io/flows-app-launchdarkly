@@ -1,0 +1,9 @@
+{
+  "versions": [
+    {
+      "version": "0.1.0",
+      "artifactUrl": "https://github.com/spacelift-io/flows-app-launchdarkly/releases/download/v0.1.0/bundle.tar.gz",
+      "artifactChecksum": "sha256:0b871d6b62047779a5413498685cef0048b89559833613dac727ed7356b94534"
+    }
+  ]
+}
