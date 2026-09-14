@@ -125,6 +125,7 @@ export default {
         await events.emit(
           await makeLaunchDarklyApiRequest(apiKey, baseUrl, endpoint, {
             method: "GET",
+            apiVersion: "beta",
           }),
         );
       },
