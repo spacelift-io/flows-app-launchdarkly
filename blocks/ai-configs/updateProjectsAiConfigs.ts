@@ -351,6 +351,7 @@ export default {
           await makeLaunchDarklyApiRequest(apiKey, baseUrl, endpoint, {
             method: "PATCH",
             body: filterDefinedParams(inputData),
+            apiVersion: "beta",
           }),
         );
       },

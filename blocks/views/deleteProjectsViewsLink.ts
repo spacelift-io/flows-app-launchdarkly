@@ -90,6 +90,7 @@ export default {
         await events.emit(
           await makeLaunchDarklyApiRequest(apiKey, baseUrl, endpoint, {
             method: "DELETE",
+            apiVersion: "beta",
           }),
         );
       },

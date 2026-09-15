@@ -76,6 +76,20 @@ A comprehensive LaunchDarkly integration that brings the full power of LaunchDar
 
 Drag LaunchDarkly blocks into your flows and start automating your feature management!
 
+### API Version
+
+Every request sends the `LD-API-Version: 20240415` header, so the app always
+uses LaunchDarkly's current REST API version regardless of the default version
+pinned to your access token. The header value is defined once in
+`utils/apiHelpers.ts` (`LD_API_VERSION`) and the block schemas are generated from
+the matching OpenAPI spec (`spec.json`), so bump both together when LaunchDarkly
+releases a new version.
+
+Beta endpoints (AI configs, views, release policies, approval request settings)
+require `LD-API-Version: beta` instead. The generator detects the required
+header parameter in the spec and emits `apiVersion: "beta"` for those blocks
+automatically, so `npm run gen` keeps them correct.
+
 ## Available Blocks
 
 The integration provides **327 blocks** organized across **48 categories**:

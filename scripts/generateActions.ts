@@ -305,6 +305,23 @@ function extractPathParams(path: string): string[] {
 }
 
 /**
+ * Returns the fixed `LD-API-Version` header value an operation requires, if any.
+ *
+ * Beta endpoints declare a required `LD-API-Version` header parameter with a
+ * single-value enum (`"beta"`). Operations without it use the app-wide default
+ * version from `utils/apiHelpers.ts`.
+ */
+function getRequiredApiVersion(operation: any): string | undefined {
+  const headerParam = operation.parameters?.find(
+    (param: any) => param.in === "header" && param.name === "LD-API-Version",
+  );
+  const fixedValue = headerParam?.schema?.enum;
+  return Array.isArray(fixedValue) && fixedValue.length === 1
+    ? String(fixedValue[0])
+    : undefined;
+}
+
+/**
  * Gets input schema from OpenAPI spec
  */
 function getInputSchema(path: string, method: string) {
@@ -556,6 +573,7 @@ function generateActionFile(
   category: string,
   inputSchema: any,
   outputSchema: any,
+  apiVersion?: string,
 ): string {
   const httpMethod = method.toUpperCase();
   const pathParams = extractPathParams(path);
@@ -582,9 +600,17 @@ function generateActionFile(
         const endpoint = \`${pathTemplate}\`;`;
 
   // Build method options and imports
-  const methodOptions = hasBody
-    ? `{\n              method: "${httpMethod}",\n              body: filterDefinedParams(inputData),\n            }`
-    : `{ method: "${httpMethod}" }`;
+  const optionEntries = [`method: "${httpMethod}"`];
+  if (hasBody) {
+    optionEntries.push("body: filterDefinedParams(inputData)");
+  }
+  if (apiVersion) {
+    optionEntries.push(`apiVersion: "${apiVersion}"`);
+  }
+  const methodOptions =
+    optionEntries.length > 1
+      ? `{\n              ${optionEntries.join(",\n              ")},\n            }`
+      : `{ ${optionEntries[0]} }`;
 
   const imports = hasBody
     ? `import { makeLaunchDarklyApiRequest, filterDefinedParams } from "../../utils/apiHelpers.ts";`
@@ -697,6 +723,7 @@ async function generateActionWithSchemas(
     category,
     inputSchema,
     outputSchema,
+    getRequiredApiVersion(endpoint[method]),
   );
   await writeActionFile(toKebabCase(category), actionName, actionContent);
 }
